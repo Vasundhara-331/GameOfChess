@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Chess Game</title>
+    <title>The Game of Chess</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <style>
         body {
@@ -314,347 +314,546 @@
 
     <script type="text/javascript">
         let game = {
-            turn: 'w',
-            selectedPiece: null,
-            highlightedSquares: [],
-            gameOver: false,
-            moveHistory: [],
+    turn: 'w',
+    selectedPiece: null,
+    highlightedSquares: [],
+    gameOver: false,
+    moveHistory: [],
+    enPassantTarget: null, // Track en passant target square
+    
+    pieces: {
+        w_king: { pos: '5_1', img: '♔', captured: false, moved: false, type: 'king' },
+        w_queen: { pos: '4_1', img: '♕', captured: false, moved: false, type: 'queen' },
+        w_bishop1: { pos: '3_1', img: '♗', captured: false, moved: false, type: 'bishop' },
+        w_bishop2: { pos: '6_1', img: '♗', captured: false, moved: false, type: 'bishop' },
+        w_knight1: { pos: '2_1', img: '♘', captured: false, moved: false, type: 'knight' },
+        w_knight2: { pos: '7_1', img: '♘', captured: false, moved: false, type: 'knight' },
+        w_rook1: { pos: '1_1', img: '♖', captured: false, moved: false, type: 'rook' },
+        w_rook2: { pos: '8_1', img: '♖', captured: false, moved: false, type: 'rook' },
+        w_pawn1: { pos: '1_2', img: '♙', captured: false, type: 'pawn', moved: false },
+        w_pawn2: { pos: '2_2', img: '♙', captured: false, type: 'pawn', moved: false },
+        w_pawn3: { pos: '3_2', img: '♙', captured: false, type: 'pawn', moved: false },
+        w_pawn4: { pos: '4_2', img: '♙', captured: false, type: 'pawn', moved: false },
+        w_pawn5: { pos: '5_2', img: '♙', captured: false, type: 'pawn', moved: false },
+        w_pawn6: { pos: '6_2', img: '♙', captured: false, type: 'pawn', moved: false },
+        w_pawn7: { pos: '7_2', img: '♙', captured: false, type: 'pawn', moved: false },
+        w_pawn8: { pos: '8_2', img: '♙', captured: false, type: 'pawn', moved: false },
+
+        b_king: { pos: '5_8', img: '♚', captured: false, moved: false, type: 'king' },
+        b_queen: { pos: '4_8', img: '♛', captured: false, moved: false, type: 'queen' },
+        b_bishop1: { pos: '3_8', img: '♝', captured: false, moved: false, type: 'bishop' },
+        b_bishop2: { pos: '6_8', img: '♝', captured: false, moved: false, type: 'bishop' },
+        b_knight1: { pos: '2_8', img: '♞', captured: false, moved: false, type: 'knight' },
+        b_knight2: { pos: '7_8', img: '♞', captured: false, moved: false, type: 'knight' },
+        b_rook1: { pos: '1_8', img: '♜', captured: false, moved: false, type: 'rook' },
+        b_rook2: { pos: '8_8', img: '♜', captured: false, moved: false, type: 'rook' },
+        b_pawn1: { pos: '1_7', img: '♟', captured: false, type: 'pawn', moved: false },
+        b_pawn2: { pos: '2_7', img: '♟', captured: false, type: 'pawn', moved: false },
+        b_pawn3: { pos: '3_7', img: '♟', captured: false, type: 'pawn', moved: false },
+        b_pawn4: { pos: '4_7', img: '♟', captured: false, type: 'pawn', moved: false },
+        b_pawn5: { pos: '5_7', img: '♟', captured: false, type: 'pawn', moved: false },
+        b_pawn6: { pos: '6_7', img: '♟', captured: false, type: 'pawn', moved: false },
+        b_pawn7: { pos: '7_7', img: '♟', captured: false, type: 'pawn', moved: false },
+        b_pawn8: { pos: '8_7', img: '♟', captured: false, type: 'pawn', moved: false }
+    },
+
+    init: function() {
+        this.renderBoard();
+        this.bindEvents();
+        this.updateGameStatus();
+    },
+
+    renderBoard: function() {
+        $('.gamecell').html('').removeAttr('data-piece').removeClass('in-check');
+        
+        for (let pieceId in this.pieces) {
+            let piece = this.pieces[pieceId];
+            if (!piece.captured) {
+                $('#' + piece.pos).html(piece.img).attr('data-piece', pieceId);
+            }
+        }
+        
+        this.highlightKingInCheck();
+    },
+
+    bindEvents: function() {
+        $('.gamecell').off('click').on('click', (e) => {
+            if (this.gameOver) return;
             
-            pieces: {
-                w_king: { pos: '5_1', img: '♔', captured: false, moved: false, type: 'king' },
-                w_queen: { pos: '4_1', img: '♕', captured: false, moved: false, type: 'queen' },
-                w_bishop1: { pos: '3_1', img: '♗', captured: false, moved: false, type: 'bishop' },
-                w_bishop2: { pos: '6_1', img: '♗', captured: false, moved: false, type: 'bishop' },
-                w_knight1: { pos: '2_1', img: '♘', captured: false, moved: false, type: 'knight' },
-                w_knight2: { pos: '7_1', img: '♘', captured: false, moved: false, type: 'knight' },
-                w_rook1: { pos: '1_1', img: '♖', captured: false, moved: false, type: 'rook' },
-                w_rook2: { pos: '8_1', img: '♖', captured: false, moved: false, type: 'rook' },
-                w_pawn1: { pos: '1_2', img: '♙', captured: false, type: 'pawn', moved: false },
-                w_pawn2: { pos: '2_2', img: '♙', captured: false, type: 'pawn', moved: false },
-                w_pawn3: { pos: '3_2', img: '♙', captured: false, type: 'pawn', moved: false },
-                w_pawn4: { pos: '4_2', img: '♙', captured: false, type: 'pawn', moved: false },
-                w_pawn5: { pos: '5_2', img: '♙', captured: false, type: 'pawn', moved: false },
-                w_pawn6: { pos: '6_2', img: '♙', captured: false, type: 'pawn', moved: false },
-                w_pawn7: { pos: '7_2', img: '♙', captured: false, type: 'pawn', moved: false },
-                w_pawn8: { pos: '8_2', img: '♙', captured: false, type: 'pawn', moved: false },
+            let cell = $(e.currentTarget);
+            let square = cell.attr('id');
+            let pieceId = cell.attr('data-piece') || '';
+            
+            this.handleSquareClick(square, pieceId);
+        });
+        
+        $('#undoBtn').off('click').on('click', () => {
+            this.undoMove();
+        });
+        
+        $('#resetBtn').off('click').on('click', () => {
+            this.resetGame();
+        });
+    },
 
-                b_king: { pos: '5_8', img: '♚', captured: false, moved: false, type: 'king' },
-                b_queen: { pos: '4_8', img: '♛', captured: false, moved: false, type: 'queen' },
-                b_bishop1: { pos: '3_8', img: '♝', captured: false, moved: false, type: 'bishop' },
-                b_bishop2: { pos: '6_8', img: '♝', captured: false, moved: false, type: 'bishop' },
-                b_knight1: { pos: '2_8', img: '♞', captured: false, moved: false, type: 'knight' },
-                b_knight2: { pos: '7_8', img: '♞', captured: false, moved: false, type: 'knight' },
-                b_rook1: { pos: '1_8', img: '♜', captured: false, moved: false, type: 'rook' },
-                b_rook2: { pos: '8_8', img: '♜', captured: false, moved: false, type: 'rook' },
-                b_pawn1: { pos: '1_7', img: '♟', captured: false, type: 'pawn', moved: false },
-                b_pawn2: { pos: '2_7', img: '♟', captured: false, type: 'pawn', moved: false },
-                b_pawn3: { pos: '3_7', img: '♟', captured: false, type: 'pawn', moved: false },
-                b_pawn4: { pos: '4_7', img: '♟', captured: false, type: 'pawn', moved: false },
-                b_pawn5: { pos: '5_7', img: '♟', captured: false, type: 'pawn', moved: false },
-                b_pawn6: { pos: '6_7', img: '♟', captured: false, type: 'pawn', moved: false },
-                b_pawn7: { pos: '7_7', img: '♟', captured: false, type: 'pawn', moved: false },
-                b_pawn8: { pos: '8_7', img: '♟', captured: false, type: 'pawn', moved: false }
-            },
-
-            init: function() {
-                this.renderBoard();
-                this.bindEvents();
-                this.updateGameStatus();
-            },
-
-            renderBoard: function() {
-                $('.gamecell').html('').removeAttr('data-piece').removeClass('in-check');
-                
-                for (let pieceId in this.pieces) {
-                    let piece = this.pieces[pieceId];
-                    if (!piece.captured) {
-                        $('#' + piece.pos).html(piece.img).attr('data-piece', pieceId);
-                    }
-                }
-                
-                this.highlightKingInCheck();
-            },
-
-            bindEvents: function() {
-                $('.gamecell').off('click').on('click', (e) => {
-                    if (this.gameOver) return;
-                    
-                    let cell = $(e.currentTarget);
-                    let square = cell.attr('id');
-                    let pieceId = cell.attr('data-piece') || '';
-                    
-                    this.handleSquareClick(square, pieceId);
-                });
-                
-                $('#undoBtn').off('click').on('click', () => {
-                    this.undoMove();
-                });
-                
-                $('#resetBtn').off('click').on('click', () => {
-                    this.resetGame();
-                });
-            },
-
-            handleSquareClick: function(square, pieceId) {
-                if (this.selectedPiece) {
-                    if (this.highlightedSquares.includes(square)) {
-                        this.movePiece(square);
-                    } else if (pieceId && pieceId[0] === this.turn) {
-                        this.selectPiece(pieceId);
-                    } else {
-                        this.deselectPiece();
-                    }
-                } else {
-                    if (pieceId && pieceId[0] === this.turn) {
-                        this.selectPiece(pieceId);
-                    }
-                }
-            },
-
-            selectPiece: function(pieceId) {
+    handleSquareClick: function(square, pieceId) {
+        if (this.selectedPiece) {
+            if (this.highlightedSquares.includes(square)) {
+                this.movePiece(square);
+            } else if (pieceId && pieceId[0] === this.turn) {
+                this.selectPiece(pieceId);
+            } else {
                 this.deselectPiece();
-                this.selectedPiece = pieceId;
-                
-                let pos = this.pieces[pieceId].pos;
-                $('#' + pos).addClass('selected');
-                
-                this.showPossibleMoves(pieceId);
-            },
+            }
+        } else {
+            if (pieceId && pieceId[0] === this.turn) {
+                this.selectPiece(pieceId);
+            }
+        }
+    },
 
-            deselectPiece: function() {
-                $('.gamecell').removeClass('selected highlight capturable');
-                this.selectedPiece = null;
-                this.highlightedSquares = [];
-                this.highlightKingInCheck();
-            },
+    selectPiece: function(pieceId) {
+        this.deselectPiece();
+        this.selectedPiece = pieceId;
+        
+        let pos = this.pieces[pieceId].pos;
+        $('#' + pos).addClass('selected');
+        
+        this.showPossibleMoves(pieceId);
+    },
 
-            showPossibleMoves: function(pieceId) {
-                let moves = this.getLegalMoves(pieceId);
-                this.highlightedSquares = moves;
+    deselectPiece: function() {
+        $('.gamecell').removeClass('selected highlight capturable');
+        this.selectedPiece = null;
+        this.highlightedSquares = [];
+        this.highlightKingInCheck();
+    },
+
+    showPossibleMoves: function(pieceId) {
+        let moves = this.getLegalMoves(pieceId);
+        this.highlightedSquares = moves;
+        
+        moves.forEach(square => {
+            let targetPiece = $('#' + square).attr('data-piece');
+            if (targetPiece && targetPiece[0] !== pieceId[0]) {
+                $('#' + square).addClass('capturable');
+            } else {
+                $('#' + square).addClass('highlight');
+            }
+        });
+    },
+
+    movePiece: function(targetSquare) {
+        let pieceId = this.selectedPiece;
+        let piece = this.pieces[pieceId];
+        let originalPos = piece.pos;
+        let capturedPiece = this.getPieceAt(targetSquare);
+        
+        // Save move to history
+        let move = {
+            pieceId: pieceId,
+            from: originalPos,
+            to: targetSquare,
+            capturedPiece: capturedPiece,
+            wasMoved: piece.moved,
+            isCastle: false,
+            rookMove: null,
+            isEnPassant: false,
+            enPassantCaptured: null,
+            previousEnPassantTarget: this.enPassantTarget
+        };
+
+        // Handle en passant capture
+        if (piece.type === 'pawn' && targetSquare === this.enPassantTarget && !capturedPiece) {
+            let [targetX, targetY] = targetSquare.split('_').map(Number);
+            let capturedPawnY = piece.img === '♙' ? targetY - 1 : targetY + 1;
+            let capturedPawnPos = targetX + '_' + capturedPawnY;
+            let capturedPawnId = this.getPieceAt(capturedPawnPos);
+            
+            if (capturedPawnId) {
+                this.pieces[capturedPawnId].captured = true;
+                move.isEnPassant = true;
+                move.enPassantCaptured = capturedPawnId;
+            }
+        }
+
+        // Reset en passant target
+        this.enPassantTarget = null;
+
+        // Handle castling
+        if (piece.type === 'king' && Math.abs(parseInt(targetSquare.split('_')[0]) - parseInt(originalPos.split('_')[0])) === 2) {
+            move.isCastle = true;
+            move.rookMove = this.handleCastling(pieceId, targetSquare);
+        } else {
+            // Regular move
+            if (capturedPiece) {
+                this.pieces[capturedPiece].captured = true;
+            }
+            
+            piece.pos = targetSquare;
+            piece.moved = true;
+        }
+
+        // Set en passant target for pawn two-square moves
+        if (piece.type === 'pawn') {
+            let [fromX, fromY] = originalPos.split('_').map(Number);
+            let [toX, toY] = targetSquare.split('_').map(Number);
+            
+            // Check if pawn moved two squares
+            if (Math.abs(toY - fromY) === 2) {
+                let enPassantY = piece.img === '♙' ? fromY + 1 : fromY - 1;
+                this.enPassantTarget = fromX + '_' + enPassantY;
+            }
+        }
+
+        this.moveHistory.push(move);
+        
+        // Handle pawn promotion
+        if (piece.type === 'pawn') {
+            let [x, y] = targetSquare.split('_').map(Number);
+            if ((piece.img === '♙' && y === 8) || (piece.img === '♟' && y === 1)) {
+                piece.img = piece.img === '♙' ? '♕' : '♛';
+                piece.type = 'queen';
+            }
+        }
+
+        this.deselectPiece();
+        this.turn = this.turn === 'w' ? 'b' : 'w';
+        this.renderBoard();
+        this.updateGameStatus();
+    },
+
+    handleCastling: function(kingId, targetSquare) {
+        let king = this.pieces[kingId];
+        let [targetX] = targetSquare.split('_').map(Number);
+        let [currentX, y] = king.pos.split('_').map(Number);
+        
+        king.pos = targetSquare;
+        king.moved = true;
+        
+        let rookId, rookFromPos, rookToPos;
+        
+        if (targetX > currentX) {
+            // Kingside castling
+            rookId = kingId[0] === 'w' ? 'w_rook2' : 'b_rook2';
+            rookFromPos = this.pieces[rookId].pos;
+            rookToPos = (targetX - 1) + '_' + y;
+        } else {
+            // Queenside castling
+            rookId = kingId[0] === 'w' ? 'w_rook1' : 'b_rook1';
+            rookFromPos = this.pieces[rookId].pos;
+            rookToPos = (targetX + 1) + '_' + y;
+        }
+        
+        this.pieces[rookId].pos = rookToPos;
+        this.pieces[rookId].moved = true;
+        
+        return { rookId: rookId, from: rookFromPos, to: rookToPos };
+    },
+
+    getLegalMoves: function(pieceId) {
+        let possibleMoves = this.getPossibleMoves(pieceId);
+        return possibleMoves.filter(move => !this.wouldMoveExposeKing(pieceId, move));
+    },
+
+    getPossibleMoves: function(pieceId) {
+        let piece = this.pieces[pieceId];
+        let [x, y] = piece.pos.split('_').map(Number);
+        let moves = [];
+
+        switch (piece.type) {
+            case 'pawn':
+                moves = this.getPawnMoves(pieceId, x, y);
+                break;
+            case 'rook':
+                moves = this.getRookMoves(pieceId, x, y);
+                break;
+            case 'knight':
+                moves = this.getKnightMoves(pieceId, x, y);
+                break;
+            case 'bishop':
+                moves = this.getBishopMoves(pieceId, x, y);
+                break;
+            case 'queen':
+                moves = this.getQueenMoves(pieceId, x, y);
+                break;
+            case 'king':
+                moves = this.getKingMoves(pieceId, x, y);
+                break;
+        }
+
+        return moves.filter(move => this.isValidSquare(move) && this.isValidMove(pieceId, move));
+    },
+
+    getPawnMoves: function(pieceId, x, y) {
+        let moves = [];
+        let isWhite = pieceId[0] === 'w';
+        let direction = isWhite ? 1 : -1;
+        let startRank = isWhite ? 2 : 7;
+
+        // One square forward
+        let oneStep = x + '_' + (y + direction);
+        if (this.isSquareEmpty(oneStep)) {
+            moves.push(oneStep);
+            
+            // Two squares forward from starting position
+            if (y === startRank) {
+                let twoSteps = x + '_' + (y + direction * 2);
+                if (this.isSquareEmpty(twoSteps)) {
+                    moves.push(twoSteps);
+                }
+            }
+        }
+
+        // Diagonal captures
+        let captureLeft = (x - 1) + '_' + (y + direction);
+        let captureRight = (x + 1) + '_' + (y + direction);
+        
+        if (this.isEnemyPiece(pieceId, captureLeft)) moves.push(captureLeft);
+        if (this.isEnemyPiece(pieceId, captureRight)) moves.push(captureRight);
+
+        // En passant captures
+        if (this.enPassantTarget) {
+            let [enPassantX, enPassantY] = this.enPassantTarget.split('_').map(Number);
+            if (enPassantY === y + direction && Math.abs(enPassantX - x) === 1) {
+                moves.push(this.enPassantTarget);
+            }
+        }
+
+        return moves;
+    },
+
+    getRookMoves: function(pieceId, x, y) {
+        let moves = [];
+        let directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+        
+        directions.forEach(([dx, dy]) => {
+            for (let i = 1; i < 8; i++) {
+                let newX = x + dx * i;
+                let newY = y + dy * i;
+                let square = newX + '_' + newY;
                 
-                moves.forEach(square => {
-                    let targetPiece = $('#' + square).attr('data-piece');
-                    if (targetPiece && targetPiece[0] !== pieceId[0]) {
-                        $('#' + square).addClass('capturable');
-                    } else {
-                        $('#' + square).addClass('highlight');
-                    }
-                });
-            },
-
-            movePiece: function(targetSquare) {
-                let pieceId = this.selectedPiece;
-                let piece = this.pieces[pieceId];
-                let originalPos = piece.pos;
-                let capturedPiece = this.getPieceAt(targetSquare);
+                if (!this.isValidSquare(square)) break;
                 
-                // Save move to history
-                let move = {
-                    pieceId: pieceId,
-                    from: originalPos,
-                    to: targetSquare,
-                    capturedPiece: capturedPiece,
-                    wasMoved: piece.moved,
-                    isCastle: false,
-                    rookMove: null
-                };
-
-                // Handle castling
-                if (piece.type === 'king' && Math.abs(parseInt(targetSquare.split('_')[0]) - parseInt(originalPos.split('_')[0])) === 2) {
-                    move.isCastle = true;
-                    move.rookMove = this.handleCastling(pieceId, targetSquare);
+                if (this.isSquareEmpty(square)) {
+                    moves.push(square);
                 } else {
-                    // Regular move
-                    if (capturedPiece) {
-                        this.pieces[capturedPiece].captured = true;
+                    if (this.isEnemyPiece(pieceId, square)) {
+                        moves.push(square);
                     }
-                    
-                    piece.pos = targetSquare;
-                    piece.moved = true;
+                    break;
                 }
+            }
+        });
+        
+        return moves;
+    },
 
-                this.moveHistory.push(move);
-                
-                // Handle pawn promotion
-                if (piece.type === 'pawn') {
-                    let [x, y] = targetSquare.split('_').map(Number);
-                    if ((piece.img === '♙' && y === 8) || (piece.img === '♟' && y === 1)) {
-                        piece.img = piece.img === '♙' ? '♕' : '♛';
-                        piece.type = 'queen';
-                    }
-                }
+    getKnightMoves: function(pieceId, x, y) {
+        let moves = [];
+        let knightMoves = [
+            [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+            [1, -2], [1, 2], [2, -1], [2, 1]
+        ];
+        
+        knightMoves.forEach(([dx, dy]) => {
+            let square = (x + dx) + '_' + (y + dy);
+            moves.push(square);
+        });
+        
+        return moves;
+    },
 
-                this.deselectPiece();
-                this.turn = this.turn === 'w' ? 'b' : 'w';
-                this.renderBoard();
-                this.updateGameStatus();
-            },
-
-            handleCastling: function(kingId, targetSquare) {
-                let king = this.pieces[kingId];
-                let [targetX] = targetSquare.split('_').map(Number);
-                let [currentX, y] = king.pos.split('_').map(Number);
+    getBishopMoves: function(pieceId, x, y) {
+        let moves = [];
+        let directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+        
+        directions.forEach(([dx, dy]) => {
+            for (let i = 1; i < 8; i++) {
+                let newX = x + dx * i;
+                let newY = y + dy * i;
+                let square = newX + '_' + newY;
                 
-                king.pos = targetSquare;
-                king.moved = true;
+                if (!this.isValidSquare(square)) break;
                 
-                let rookId, rookFromPos, rookToPos;
-                
-                if (targetX > currentX) {
-                    // Kingside castling
-                    rookId = kingId[0] === 'w' ? 'w_rook2' : 'b_rook2';
-                    rookFromPos = this.pieces[rookId].pos;
-                    rookToPos = (targetX - 1) + '_' + y;
+                if (this.isSquareEmpty(square)) {
+                    moves.push(square);
                 } else {
-                    // Queenside castling
-                    rookId = kingId[0] === 'w' ? 'w_rook1' : 'b_rook1';
-                    rookFromPos = this.pieces[rookId].pos;
-                    rookToPos = (targetX + 1) + '_' + y;
+                    if (this.isEnemyPiece(pieceId, square)) {
+                        moves.push(square);
+                    }
+                    break;
                 }
-                
-                this.pieces[rookId].pos = rookToPos;
-                this.pieces[rookId].moved = true;
-                
-                return { rookId: rookId, from: rookFromPos, to: rookToPos };
-            },
+            }
+        });
+        
+        return moves;
+    },
 
-            getLegalMoves: function(pieceId) {
-                let possibleMoves = this.getPossibleMoves(pieceId);
-                return possibleMoves.filter(move => !this.wouldMoveExposeKing(pieceId, move));
-            },
+    getQueenMoves: function(pieceId, x, y) {
+        return this.getRookMoves(pieceId, x, y).concat(this.getBishopMoves(pieceId, x, y));
+    },
 
-            getPossibleMoves: function(pieceId) {
-                let piece = this.pieces[pieceId];
-                let [x, y] = piece.pos.split('_').map(Number);
-                let moves = [];
+    getKingMoves: function(pieceId, x, y) {
+        let moves = [];
+        let kingMoves = [
+            [-1, -1], [-1, 0], [-1, 1],
+            [0, -1],           [0, 1],
+            [1, -1],  [1, 0],  [1, 1]
+        ];
+        
+        kingMoves.forEach(([dx, dy]) => {
+            let square = (x + dx) + '_' + (y + dy);
+            moves.push(square);
+        });
 
-                switch (piece.type) {
-                    case 'pawn':
-                        moves = this.getPawnMoves(pieceId, x, y);
-                        break;
-                    case 'rook':
-                        moves = this.getRookMoves(pieceId, x, y);
-                        break;
-                    case 'knight':
-                        moves = this.getKnightMoves(pieceId, x, y);
-                        break;
-                    case 'bishop':
-                        moves = this.getBishopMoves(pieceId, x, y);
-                        break;
-                    case 'queen':
-                        moves = this.getQueenMoves(pieceId, x, y);
-                        break;
-                    case 'king':
-                        moves = this.getKingMoves(pieceId, x, y);
-                        break;
+        // Add castling moves if conditions are met
+        if (!this.pieces[pieceId].moved && !this.isKingInCheck(pieceId[0])) {
+            // Kingside castling
+            let kingsideRook = pieceId[0] === 'w' ? 'w_rook2' : 'b_rook2';
+            if (!this.pieces[kingsideRook].moved && 
+                this.isSquareEmpty((x + 1) + '_' + y) && 
+                this.isSquareEmpty((x + 2) + '_' + y) &&
+                !this.wouldSquareBeUnderAttack((x + 1) + '_' + y, pieceId[0]) &&
+                !this.wouldSquareBeUnderAttack((x + 2) + '_' + y, pieceId[0])) {
+                moves.push((x + 2) + '_' + y);
+            }
+            
+            // Queenside castling
+            let queensideRook = pieceId[0] === 'w' ? 'w_rook1' : 'b_rook1';
+            if (!this.pieces[queensideRook].moved && 
+                this.isSquareEmpty((x - 1) + '_' + y) && 
+                this.isSquareEmpty((x - 2) + '_' + y) &&
+                this.isSquareEmpty((x - 3) + '_' + y) &&
+                !this.wouldSquareBeUnderAttack((x - 1) + '_' + y, pieceId[0]) &&
+                !this.wouldSquareBeUnderAttack((x - 2) + '_' + y, pieceId[0])) {
+                moves.push((x - 2) + '_' + y);
+            }
+        }
+        
+        return moves;
+    },
+
+    isValidSquare: function(square) {
+        let [x, y] = square.split('_').map(Number);
+        return x >= 1 && x <= 8 && y >= 1 && y <= 8;
+    },
+
+    isValidMove: function(pieceId, targetSquare) {
+        if (!this.isValidSquare(targetSquare)) return false;
+        
+        let targetPiece = this.getPieceAt(targetSquare);
+        if (targetPiece && targetPiece[0] === pieceId[0]) return false;
+        
+        return true;
+    },
+
+    isSquareEmpty: function(square) {
+        return !this.getPieceAt(square);
+    },
+
+    isEnemyPiece: function(pieceId, square) {
+        let targetPiece = this.getPieceAt(square);
+        return targetPiece && targetPiece[0] !== pieceId[0];
+    },
+
+    getPieceAt: function(square) {
+        for (let pieceId in this.pieces) {
+            let piece = this.pieces[pieceId];
+            if (!piece.captured && piece.pos === square) {
+                return pieceId;
+            }
+        }
+        return null;
+    },
+
+    wouldMoveExposeKing: function(pieceId, targetSquare) {
+        // Simulate the move
+        let piece = this.pieces[pieceId];
+        let originalPos = piece.pos;
+        let capturedPiece = this.getPieceAt(targetSquare);
+        let enPassantCaptured = null;
+        
+        // Handle en passant simulation
+        if (piece.type === 'pawn' && targetSquare === this.enPassantTarget && !capturedPiece) {
+            let [targetX, targetY] = targetSquare.split('_').map(Number);
+            let capturedPawnY = piece.img === '♙' ? targetY - 1 : targetY + 1;
+            let capturedPawnPos = targetX + '_' + capturedPawnY;
+            enPassantCaptured = this.getPieceAt(capturedPawnPos);
+        }
+        
+        // Make temporary move
+        piece.pos = targetSquare;
+        if (capturedPiece) {
+            this.pieces[capturedPiece].captured = true;
+        }
+        if (enPassantCaptured) {
+            this.pieces[enPassantCaptured].captured = true;
+        }
+        
+        // Check if king is in check after move
+        let kingInCheck = this.isKingInCheck(pieceId[0]);
+        
+        // Restore original state
+        piece.pos = originalPos;
+        if (capturedPiece) {
+            this.pieces[capturedPiece].captured = false;
+        }
+        if (enPassantCaptured) {
+            this.pieces[enPassantCaptured].captured = false;
+        }
+        
+        return kingInCheck;
+    },
+
+    isKingInCheck: function(color) {
+        let kingId = color === 'w' ? 'w_king' : 'b_king';
+        let kingPos = this.pieces[kingId].pos;
+        
+        return this.wouldSquareBeUnderAttack(kingPos, color);
+    },
+
+    wouldSquareBeUnderAttack: function(square, defenderColor) {
+        let attackerColor = defenderColor === 'w' ? 'b' : 'w';
+        
+        for (let pieceId in this.pieces) {
+            let piece = this.pieces[pieceId];
+            if (!piece.captured && pieceId[0] === attackerColor) {
+                let attacks = this.getPieceAttacks(pieceId);
+                if (attacks.includes(square)) {
+                    return true;
                 }
+            }
+        }
+        
+        return false;
+    },
 
-                return moves.filter(move => this.isValidSquare(move) && this.isValidMove(pieceId, move));
-            },
+    getPieceAttacks: function(pieceId) {
+        let piece = this.pieces[pieceId];
+        let [x, y] = piece.pos.split('_').map(Number);
+        let attacks = [];
 
-            getPawnMoves: function(pieceId, x, y) {
-                let moves = [];
+        switch (piece.type) {
+            case 'pawn':
                 let isWhite = pieceId[0] === 'w';
                 let direction = isWhite ? 1 : -1;
-                let startRank = isWhite ? 2 : 7;
-
-                // One square forward
-                let oneStep = x + '_' + (y + direction);
-                if (this.isSquareEmpty(oneStep)) {
-                    moves.push(oneStep);
-                    
-                    // Two squares forward from starting position
-                    if (y === startRank) {
-                        let twoSteps = x + '_' + (y + direction * 2);
-                        if (this.isSquareEmpty(twoSteps)) {
-                            moves.push(twoSteps);
-                        }
-                    }
-                }
-
-                // Diagonal captures
-                let captureLeft = (x - 1) + '_' + (y + direction);
-                let captureRight = (x + 1) + '_' + (y + direction);
-                
-                if (this.isEnemyPiece(pieceId, captureLeft)) moves.push(captureLeft);
-                if (this.isEnemyPiece(pieceId, captureRight)) moves.push(captureRight);
-
-                return moves;
-            },
-
-            getRookMoves: function(pieceId, x, y) {
-                let moves = [];
-                let directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
-                
-                directions.forEach(([dx, dy]) => {
-                    for (let i = 1; i < 8; i++) {
-                        let newX = x + dx * i;
-                        let newY = y + dy * i;
-                        let square = newX + '_' + newY;
-                        
-                        if (!this.isValidSquare(square)) break;
-                        
-                        if (this.isSquareEmpty(square)) {
-                            moves.push(square);
-                        } else {
-                            if (this.isEnemyPiece(pieceId, square)) {
-                                moves.push(square);
-                            }
-                            break;
-                        }
-                    }
-                });
-                
-                return moves;
-            },
-
-            getKnightMoves: function(pieceId, x, y) {
-                let moves = [];
-                let knightMoves = [
-                    [-2, -1], [-2, 1], [-1, -2], [-1, 2],
-                    [1, -2], [1, 2], [2, -1], [2, 1]
-                ];
-                
-                knightMoves.forEach(([dx, dy]) => {
-                    let square = (x + dx) + '_' + (y + dy);
-                    moves.push(square);
-                });
-                
-                return moves;
-            },
-
-            getBishopMoves: function(pieceId, x, y) {
-                let moves = [];
-                let directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
-                
-                directions.forEach(([dx, dy]) => {
-                    for (let i = 1; i < 8; i++) {
-                        let newX = x + dx * i;
-                        let newY = y + dy * i;
-                        let square = newX + '_' + newY;
-                        
-                        if (!this.isValidSquare(square)) break;
-                        
-                        if (this.isSquareEmpty(square)) {
-                            moves.push(square);
-                        } else {
-                            if (this.isEnemyPiece(pieceId, square)) {
-                                moves.push(square);
-                            }
-                            break;
-                        }
-                    }
-                });
-                
-                return moves;
-            },
-
-            getQueenMoves: function(pieceId, x, y) {
-                return this.getRookMoves(pieceId, x, y).concat(this.getBishopMoves(pieceId, x, y));
-            },
-
-            getKingMoves: function(pieceId, x, y) {
-                let moves = [];
+                attacks.push((x - 1) + '_' + (y + direction));
+                attacks.push((x + 1) + '_' + (y + direction));
+                break;
+            case 'rook':
+                attacks = this.getRookMoves(pieceId, x, y);
+                break;
+            case 'knight':
+                attacks = this.getKnightMoves(pieceId, x, y);
+                break;
+            case 'bishop':
+                attacks = this.getBishopMoves(pieceId, x, y);
+                break;
+            case 'queen':
+                attacks = this.getQueenMoves(pieceId, x, y);
+                break;
+            case 'king':
                 let kingMoves = [
                     [-1, -1], [-1, 0], [-1, 1],
                     [0, -1],           [0, 1],
@@ -663,253 +862,118 @@
                 
                 kingMoves.forEach(([dx, dy]) => {
                     let square = (x + dx) + '_' + (y + dy);
-                    moves.push(square);
+                    attacks.push(square);
                 });
+                break;
+        }
 
-                // Add castling moves if conditions are met
-                if (!this.pieces[pieceId].moved && !this.isKingInCheck(pieceId[0])) {
-                    // Kingside castling
-                    let kingsideRook = pieceId[0] === 'w' ? 'w_rook2' : 'b_rook2';
-                    if (!this.pieces[kingsideRook].moved && 
-                        this.isSquareEmpty((x + 1) + '_' + y) && 
-                        this.isSquareEmpty((x + 2) + '_' + y) &&
-                        !this.wouldSquareBeUnderAttack((x + 1) + '_' + y, pieceId[0]) &&
-                        !this.wouldSquareBeUnderAttack((x + 2) + '_' + y, pieceId[0])) {
-                        moves.push((x + 2) + '_' + y);
-                    }
-                    
-                    // Queenside castling
-                    let queensideRook = pieceId[0] === 'w' ? 'w_rook1' : 'b_rook1';
-                    if (!this.pieces[queensideRook].moved && 
-                        this.isSquareEmpty((x - 1) + '_' + y) && 
-                        this.isSquareEmpty((x - 2) + '_' + y) &&
-                        this.isSquareEmpty((x - 3) + '_' + y) &&
-                        !this.wouldSquareBeUnderAttack((x - 1) + '_' + y, pieceId[0]) &&
-                        !this.wouldSquareBeUnderAttack((x - 2) + '_' + y, pieceId[0])) {
-                        moves.push((x - 2) + '_' + y);
-                    }
+        return attacks.filter(square => this.isValidSquare(square));
+    },
+
+    highlightKingInCheck: function() {
+        if (this.isKingInCheck(this.turn)) {
+            let kingId = this.turn === 'w' ? 'w_king' : 'b_king';
+            let kingPos = this.pieces[kingId].pos;
+            $('#' + kingPos).addClass('in-check');
+        }
+    },
+
+    updateGameStatus: function() {
+        let turnText = this.turn === 'w' ? 'White' : 'Black';
+        let $turnDiv = $('#turn');
+        
+        $turnDiv.removeClass('check checkmate stalemate');
+        
+        if (this.isKingInCheck(this.turn)) {
+            if (this.isCheckmate()) {
+                $turnDiv.html('Checkmate! ' + (this.turn === 'w' ? 'Black' : 'White') + ' Wins!');
+                $turnDiv.addClass('checkmate');
+                this.gameOver = true;
+                $('#undoBtn').prop('disabled', false);
+            } else {
+                $turnDiv.html(turnText + ' is in Check!');
+                $turnDiv.addClass('check');
+            }
+        } else if (this.isStalemate()) {
+            $turnDiv.html('Stalemate! Game is a Draw!');
+            $turnDiv.addClass('stalemate');
+            this.gameOver = true;
+            $('#undoBtn').prop('disabled', false);
+        } else {
+            $turnDiv.html("It's " + turnText + "'s Turn");
+        }
+        
+        $('#undoBtn').prop('disabled', this.moveHistory.length === 0);
+    },
+
+    isCheckmate: function() {
+        if (!this.isKingInCheck(this.turn)) return false;
+        return this.hasNoLegalMoves();
+    },
+
+    isStalemate: function() {
+        if (this.isKingInCheck(this.turn)) return false;
+        return this.hasNoLegalMoves();
+    },
+
+    hasNoLegalMoves: function() {
+        for (let pieceId in this.pieces) {
+            let piece = this.pieces[pieceId];
+            if (!piece.captured && pieceId[0] === this.turn) {
+                let legalMoves = this.getLegalMoves(pieceId);
+                if (legalMoves.length > 0) {
+                    return false;
                 }
-                
-                return moves;
-            },
+            }
+        }
+        return true;
+    },
 
-            isValidSquare: function(square) {
-                let [x, y] = square.split('_').map(Number);
-                return x >= 1 && x <= 8 && y >= 1 && y <= 8;
-            },
-
-            isValidMove: function(pieceId, targetSquare) {
-                if (!this.isValidSquare(targetSquare)) return false;
-                
-                let targetPiece = this.getPieceAt(targetSquare);
-                if (targetPiece && targetPiece[0] === pieceId[0]) return false;
-                
-                return true;
-            },
-
-            isSquareEmpty: function(square) {
-                return !this.getPieceAt(square);
-            },
-
-            isEnemyPiece: function(pieceId, square) {
-                let targetPiece = this.getPieceAt(square);
-                return targetPiece && targetPiece[0] !== pieceId[0];
-            },
-
-            getPieceAt: function(square) {
-                for (let pieceId in this.pieces) {
-                    let piece = this.pieces[pieceId];
-                    if (!piece.captured && piece.pos === square) {
-                        return pieceId;
-                    }
-                }
-                return null;
-            },
-
-            wouldMoveExposeKing: function(pieceId, targetSquare) {
-                // Simulate the move
-                let piece = this.pieces[pieceId];
-                let originalPos = piece.pos;
-                let capturedPiece = this.getPieceAt(targetSquare);
-                
-                // Make temporary move
-                piece.pos = targetSquare;
-                if (capturedPiece) {
-                    this.pieces[capturedPiece].captured = true;
-                }
-                
-                // Check if king is in check after move
-                let kingInCheck = this.isKingInCheck(pieceId[0]);
-                
-                // Restore original state
-                piece.pos = originalPos;
-                if (capturedPiece) {
-                    this.pieces[capturedPiece].captured = false;
-                }
-                
-                return kingInCheck;
-            },
-
-            isKingInCheck: function(color) {
-                let kingId = color === 'w' ? 'w_king' : 'b_king';
-                let kingPos = this.pieces[kingId].pos;
-                
-                return this.wouldSquareBeUnderAttack(kingPos, color);
-            },
-
-            wouldSquareBeUnderAttack: function(square, defenderColor) {
-                let attackerColor = defenderColor === 'w' ? 'b' : 'w';
-                
-                for (let pieceId in this.pieces) {
-                    let piece = this.pieces[pieceId];
-                    if (!piece.captured && pieceId[0] === attackerColor) {
-                        let attacks = this.getPieceAttacks(pieceId);
-                        if (attacks.includes(square)) {
-                            return true;
-                        }
-                    }
-                }
-                
-                return false;
-            },
-
-            getPieceAttacks: function(pieceId) {
-                let piece = this.pieces[pieceId];
-                let [x, y] = piece.pos.split('_').map(Number);
-                let attacks = [];
-
-                switch (piece.type) {
-                    case 'pawn':
-                        let isWhite = pieceId[0] === 'w';
-                        let direction = isWhite ? 1 : -1;
-                        attacks.push((x - 1) + '_' + (y + direction));
-                        attacks.push((x + 1) + '_' + (y + direction));
-                        break;
-                    case 'rook':
-                        attacks = this.getRookMoves(pieceId, x, y);
-                        break;
-                    case 'knight':
-                        attacks = this.getKnightMoves(pieceId, x, y);
-                        break;
-                    case 'bishop':
-                        attacks = this.getBishopMoves(pieceId, x, y);
-                        break;
-                    case 'queen':
-                        attacks = this.getQueenMoves(pieceId, x, y);
-                        break;
-                    case 'king':
-                        let kingMoves = [
-                            [-1, -1], [-1, 0], [-1, 1],
-                            [0, -1],           [0, 1],
-                            [1, -1],  [1, 0],  [1, 1]
-                        ];
-                        
-                        kingMoves.forEach(([dx, dy]) => {
-                            let square = (x + dx) + '_' + (y + dy);
-                            attacks.push(square);
-                        });
-                        break;
-                }
-
-                return attacks.filter(square => this.isValidSquare(square));
-            },
-
-            highlightKingInCheck: function() {
-                if (this.isKingInCheck(this.turn)) {
-                    let kingId = this.turn === 'w' ? 'w_king' : 'b_king';
-                    let kingPos = this.pieces[kingId].pos;
-                    $('#' + kingPos).addClass('in-check');
-                }
-            },
-
-            updateGameStatus: function() {
-                let turnText = this.turn === 'w' ? 'White' : 'Black';
-                let $turnDiv = $('#turn');
-                
-                $turnDiv.removeClass('check checkmate stalemate');
-                
-                if (this.isKingInCheck(this.turn)) {
-                    if (this.isCheckmate()) {
-                        $turnDiv.html('Checkmate! ' + (this.turn === 'w' ? 'Black' : 'White') + ' Wins!');
-                        $turnDiv.addClass('checkmate');
-                        this.gameOver = true;
-                        $('#undoBtn').prop('disabled', false);
-                    } else {
-                        $turnDiv.html(turnText + ' is in Check!');
-                        $turnDiv.addClass('check');
-                    }
-                } else if (this.isStalemate()) {
-                    $turnDiv.html('Stalemate! Game is a Draw!');
-                    $turnDiv.addClass('stalemate');
-                    this.gameOver = true;
-                    $('#undoBtn').prop('disabled', false);
-                } else {
-                    $turnDiv.html("It's " + turnText + "'s Turn");
-                }
-                
-                $('#undoBtn').prop('disabled', this.moveHistory.length === 0);
-            },
-
-            isCheckmate: function() {
-                if (!this.isKingInCheck(this.turn)) return false;
-                return this.hasNoLegalMoves();
-            },
-
-            isStalemate: function() {
-                if (this.isKingInCheck(this.turn)) return false;
-                return this.hasNoLegalMoves();
-            },
-
-            hasNoLegalMoves: function() {
-                for (let pieceId in this.pieces) {
-                    let piece = this.pieces[pieceId];
-                    if (!piece.captured && pieceId[0] === this.turn) {
-                        let legalMoves = this.getLegalMoves(pieceId);
-                        if (legalMoves.length > 0) {
-                            return false;
-                        }
-                    }
-                }
-                return true;
-            },
-
-            undoMove: function() {
-                if (this.moveHistory.length === 0) return;
-                
-                let lastMove = this.moveHistory.pop();
-                let piece = this.pieces[lastMove.pieceId];
-                
-                // Restore piece position and moved status
-                piece.pos = lastMove.from;
-                piece.moved = lastMove.wasMoved;
-                
-                // Handle castling undo
-                if (lastMove.isCastle && lastMove.rookMove) {
-                    let rook = this.pieces[lastMove.rookMove.rookId];
-                    rook.pos = lastMove.rookMove.from;
-                    rook.moved = false; // Rook hadn't moved before castling
-                }
-                
-                // Restore captured piece
-                if (lastMove.capturedPiece) {
-                    this.pieces[lastMove.capturedPiece].captured = false;
-                }
-                
-                // Handle pawn promotion undo
-                if (piece.type === 'queen' && (piece.img === '♕' || piece.img === '♛')) {
-                    let [x, y] = piece.pos.split('_').map(Number);
-                    if ((lastMove.pieceId[0] === 'w' && y === 2) || (lastMove.pieceId[0] === 'b' && y === 7)) {
-                        piece.type = 'pawn';
-                        piece.img = lastMove.pieceId[0] === 'w' ? '♙' : '♟';
-                    }
-                }
-                
-                this.turn = this.turn === 'w' ? 'b' : 'w';
-                this.gameOver = false;
-                this.deselectPiece();
-                this.renderBoard();
-                this.updateGameStatus();
-            },
+    undoMove: function() {
+        if (this.moveHistory.length === 0) return;
+        
+        let lastMove = this.moveHistory.pop();
+        let piece = this.pieces[lastMove.pieceId];
+        
+        // Restore piece position and moved status
+        piece.pos = lastMove.from;
+        piece.moved = lastMove.wasMoved;
+        
+        // Restore en passant target
+        this.enPassantTarget = lastMove.previousEnPassantTarget;
+        
+        // Handle castling undo
+        if (lastMove.isCastle && lastMove.rookMove) {
+            let rook = this.pieces[lastMove.rookMove.rookId];
+            rook.pos = lastMove.rookMove.from;
+            rook.moved = false; // Rook hadn't moved before castling
+        }
+        
+        // Handle en passant undo
+        if (lastMove.isEnPassant && lastMove.enPassantCaptured) {
+            this.pieces[lastMove.enPassantCaptured].captured = false;
+        }
+        
+        // Restore captured piece
+        if (lastMove.capturedPiece) {
+            this.pieces[lastMove.capturedPiece].captured = false;
+        }
+        
+        // Handle pawn promotion undo
+        if (piece.type === 'queen' && (piece.img === '♕' || piece.img === '♛')) {
+            let [x, y] = piece.pos.split('_').map(Number);
+            if ((lastMove.pieceId[0] === 'w' && y === 2) || (lastMove.pieceId[0] === 'b' && y === 7)) {
+                piece.type = 'pawn';
+                piece.img = lastMove.pieceId[0] === 'w' ? '♙' : '♟';
+            }
+        }
+        
+        this.turn = this.turn === 'w' ? 'b' : 'w';
+        this.gameOver = false;
+        this.deselectPiece();
+        this.renderBoard();
+        this.updateGameStatus();
+    },
 
             resetGame: function() {
                 // Reset all pieces to starting positions
