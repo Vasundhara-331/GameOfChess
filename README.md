@@ -8,3 +8,5 @@ Disclaimer:
 This game is single player (no AI, no opponent bots, and ye, no multiplayer)
 
 Have fun trying it out :)
+
+View here: https://sembreak-madness-goc.vercel.app/
